@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark theme base */
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  @apply bg-editor-bg text-editor-text;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ── Glass utilities ── */
+@layer components {
+  .glass {
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)];
+  }
+
+  .glass-panel {
+    @apply bg-editor-panel/75 backdrop-blur-2xl border-white/[0.05] shadow-[0_4px_30px_rgba(0,0,0,0.1)];
+  }
+
+  .glass-card {
+    @apply bg-white/[0.02] backdrop-blur-md border border-white/[0.05] rounded-xl transition-all duration-300;
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-card:hover {
+    @apply bg-white/[0.04] border-white/[0.12] -translate-y-[2px];
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .btn-primary {
+    @apply bg-gradient-accent text-white font-semibold rounded-lg shadow-glow
+           transition-all duration-300 hover:shadow-glow-lg hover:saturate-150
+           active:scale-[0.97] disabled:opacity-40 disabled:hover:shadow-none
+           disabled:hover:saturate-100 disabled:active:scale-100;
+  }
+
+  .btn-ghost {
+    @apply bg-white/[0.03] border border-white/[0.06] text-editor-text font-medium
+           rounded-lg transition-all duration-300 hover:bg-white/[0.08]
+           hover:border-white/[0.15] hover:shadow-sm active:scale-[0.97];
+  }
+
+  .btn-toggle {
+    @apply border border-editor-border text-editor-text-muted font-medium
+           rounded-lg transition-all duration-300 hover:bg-white/[0.06]
+           hover:border-white/[0.12] hover:text-editor-text;
+  }
+
+  .btn-toggle-active {
+    @apply bg-editor-accent/20 border-editor-accent/50 text-editor-accent shadow-[inset_0_0_12px_rgba(139,92,246,0.2)];
+  }
+
+  .input-field {
+    @apply bg-editor-bg/50 border border-white/[0.06] rounded-lg px-3 py-2
+           text-sm text-editor-text transition-all duration-300
+           focus:outline-none focus:border-editor-accent/60 focus:bg-white/[0.04]
+           focus:shadow-[0_0_15px_rgba(139,92,246,0.15)] placeholder:text-editor-text-dim;
+  }
+}
+
+/* ── Custom Scrollbar ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Range input ── */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 16px rgba(236, 72, 153, 0.5);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(236, 72, 153, 0.3);
+}

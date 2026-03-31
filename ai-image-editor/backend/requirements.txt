@@ -1,0 +1,14 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+pydantic-settings==2.2.1
+Pillow==10.3.0
+numpy==1.26.4
+torch==2.2.2
+torchvision==0.17.2
+opencv-python-headless==4.9.0.80
+basicsr==1.4.2
+realesrgan==0.3.0
+timm
+git+https://github.com/ChaoningZhang/MobileSAM.git
+simple-lama-inpainting

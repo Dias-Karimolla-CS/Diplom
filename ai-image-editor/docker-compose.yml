@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost/api/v1
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    volumes:
+      - ./models:/app/models/weights
+    environment:
+      - MODEL_DIR=/app/models/weights
+      - DEVICE=cpu
+    restart: unless-stopped
+
+  nginx:
+    build: ./nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped

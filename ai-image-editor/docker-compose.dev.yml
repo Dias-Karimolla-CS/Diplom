@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.gpu
+    volumes:
+      - ./backend/app:/app/app
+      - ./models:/app/models/weights
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_DIR=/app/models/weights
+      - DEVICE=cuda
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics,video
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
