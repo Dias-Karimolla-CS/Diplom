@@ -11,6 +11,12 @@ from app.models.u2net import predict as u2net_predict
 from app.models.real_esrgan import upscale as esrgan_upscale
 from app.models.zero_dce import enhance as dce_enhance
 
+# QC Constants
+WHITE_THRESHOLD = 248
+MIN_BG_WHITE_RATIO = 0.995
+HALO_WARNING_THRESHOLD = 0.98
+HALO_SEVERE_THRESHOLD = 0.95
+
 def analyze_image_properties(pil_image: Image.Image) -> dict:
     """Analyze the raw image to decide if enhancement steps are needed."""
     np_img = np.array(pil_image.convert('RGB'))
@@ -38,7 +44,13 @@ def post_process_mask(mask_255: np.ndarray) -> np.ndarray:
     _, final_mask = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
     return final_mask
 
-def construct_qc_gates(original_np_rgb: np.ndarray, final_mask_np: np.ndarray, bbox: tuple) -> dict:
+def construct_qc_gates(
+    original_np_rgb: np.ndarray, 
+    final_mask_np: np.ndarray, 
+    bbox: tuple, 
+    canvas: np.ndarray = None, 
+    full_canvas_mask: np.ndarray = None
+) -> dict:
     """Evaluate pipeline quality based on strict gates to reduce false fails."""
     h, w = original_np_rgb.shape[:2]
     x, y, w_b, h_b = bbox
@@ -54,7 +66,7 @@ def construct_qc_gates(original_np_rgb: np.ndarray, final_mask_np: np.ndarray, b
     else:
         gates["G1_SPATIAL_BOUNDS"] = "PASSED"
         
-    # G3: Halo Variance Test
+    # G3_HALO_VARIANCE: Halo Variance Test (Legacy original image check)
     ring_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
     dilated = cv2.dilate(final_mask_np, ring_kernel)
     ring = cv2.bitwise_xor(dilated, final_mask_np) 
@@ -77,8 +89,58 @@ def construct_qc_gates(original_np_rgb: np.ndarray, final_mask_np: np.ndarray, b
     if num_components > 3:
         failed_reasons.append("FRAGMENTED_MASK")
         
+    # Check new canvas-based gates if canvas is provided
+    if canvas is not None and full_canvas_mask is not None:
+        
+        # G2_BACKGROUND_PURITY
+        bg_mask = (full_canvas_mask == 0)
+        bg_pixels = canvas[bg_mask]
+        
+        if len(bg_pixels) > 0:
+            white_cond = (bg_pixels[:, 0] >= WHITE_THRESHOLD) & \
+                         (bg_pixels[:, 1] >= WHITE_THRESHOLD) & \
+                         (bg_pixels[:, 2] >= WHITE_THRESHOLD)
+            bg_white_ratio = float(np.sum(white_cond) / len(bg_pixels))
+            
+            gates["G2_BACKGROUND_PURITY"] = {
+                "bg_white_ratio": round(bg_white_ratio, 4),
+                "WHITE_THRESHOLD": WHITE_THRESHOLD,
+                "MIN_BG_WHITE_RATIO": MIN_BG_WHITE_RATIO
+            }
+            
+            if bg_white_ratio < MIN_BG_WHITE_RATIO:
+                failed_reasons.append("BACKGROUND_NOT_WHITE")
+                
+        # G3_HALO_OUTER_RING
+        outer_ring_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)) # Roughly r=3
+        ring_dilated = cv2.dilate(full_canvas_mask, outer_ring_kernel)
+        outer_ring = cv2.bitwise_xor(ring_dilated, full_canvas_mask)
+        
+        ring_pixels = canvas[outer_ring > 0]
+        if len(ring_pixels) > 0:
+            white_cond = (ring_pixels[:, 0] >= WHITE_THRESHOLD) & \
+                         (ring_pixels[:, 1] >= WHITE_THRESHOLD) & \
+                         (ring_pixels[:, 2] >= WHITE_THRESHOLD)
+            outer_white_ratio = float(np.sum(white_cond) / len(ring_pixels))
+            
+            gates["G3_HALO_OUTER_RING"] = {
+                "outer_white_ratio": round(outer_white_ratio, 4),
+                "ring_width_px": 3,
+                "warning_threshold": HALO_WARNING_THRESHOLD,
+                "severe_threshold": HALO_SEVERE_THRESHOLD
+            }
+            
+            if outer_white_ratio < HALO_SEVERE_THRESHOLD:
+                failed_reasons.append("HALO_SEVERE")
+            elif outer_white_ratio < HALO_WARNING_THRESHOLD:
+                warnings.append("HALO_DETECTED")
+
     # Final Status Logic
     status = "PASSED"
+    # Provide unique reasons
+    failed_reasons = list(dict.fromkeys(failed_reasons))
+    warnings = list(dict.fromkeys(warnings))
+    
     if failed_reasons:
         status = "FAILED_NEEDS_REVIEW"
     elif warnings:
@@ -137,8 +199,6 @@ def generate_packshot(u2net_model, esrgan_model, dce_model, pil_image: Image.Ima
         }
         
     pipeline_log.append(f"Bounding box calculated: x:{x}, y:{y}, w:{w}, h:{h}")
-    qc_results = construct_qc_gates(np.array(current_image), post_mask, (x, y, w, h))
-    qc_results["pipeline_log"] = pipeline_log
     
     # 7. Geometry Compositing
     cropped_rgb = target_rgb[y:y+h, x:x+w]
@@ -156,9 +216,12 @@ def generate_packshot(u2net_model, esrgan_model, dce_model, pil_image: Image.Ima
     
     # Pure White Canvas
     canvas = np.ones((target_res, target_res, 3), dtype=np.uint8) * 255
+    full_canvas_mask = np.zeros((target_res, target_res), dtype=np.uint8)
     
     start_x = (target_res - new_w) // 2
     start_y = (target_res - new_h) // 2
+    
+    full_canvas_mask[start_y:start_y+new_h, start_x:start_x+new_w] = resized_mask
     
     # Alpha compositing on pure white
     roi = canvas[start_y:start_y+new_h, start_x:start_x+new_w]
@@ -166,6 +229,16 @@ def generate_packshot(u2net_model, esrgan_model, dce_model, pil_image: Image.Ima
     blended = (resized_rgb * mask_3d) + (roi * (1.0 - mask_3d))
     canvas[start_y:start_y+new_h, start_x:start_x+new_w] = blended.astype(np.uint8)
     pipeline_log.append(f"Result composited to perfect white canvas {target_res}x{target_res} with ~8% margins.")
+    
+    # Generate QC Results based on finalized composites
+    qc_results = construct_qc_gates(
+        np.array(current_image), 
+        post_mask, 
+        (x, y, w, h), 
+        canvas=canvas, 
+        full_canvas_mask=full_canvas_mask
+    )
+    qc_results["pipeline_log"] = pipeline_log
     
     # 8. Encode payload
     final_pil = Image.fromarray(canvas)
