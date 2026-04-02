@@ -49,16 +49,24 @@ export default function HomePage() {
         </p>
 
         {/* Call to Action */}
-        <Link 
-          href="/editor" 
-          className="group relative inline-flex items-center gap-3 px-8 py-4 bg-gradient-accent text-white font-semibold rounded-2xl shadow-glow transition-all duration-300 hover:shadow-glow-lg hover:-translate-y-1 animate-slide-up"
-          style={{ animationDelay: '0.3s', animationFillMode: 'both' }}
-        >
-          <span className="text-base tracking-wide">Launch Editor</span>
-          <MoveRight className="group-hover:translate-x-1 transition-transform" size={18} />
-          <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/20" />
-        </Link>
-
+        <div className="flex flex-col sm:flex-row items-center gap-4 animate-slide-up" style={{ animationDelay: '0.3s', animationFillMode: 'both' }}>
+          <Link
+            href="/editor"
+            className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-accent text-white font-semibold rounded-2xl shadow-glow transition-all duration-300 hover:shadow-glow-lg hover:-translate-y-1 w-full sm:w-auto"
+          >
+            <span className="text-base tracking-wide">Figma Canvas Editor</span>
+            <MoveRight className="group-hover:translate-x-1 transition-transform" size={18} />
+            <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/20" />
+          </Link>
+          
+          <Link
+            href="/tools"
+            className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-gray-800/80 text-white font-semibold rounded-2xl border border-gray-700 hover:border-gray-500 hover:bg-gray-800 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-full sm:w-auto backdrop-blur-sm"
+          >
+            <span className="text-base tracking-wide text-gray-300 group-hover:text-white">Quick AI Tools</span>
+            <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </Link>
+        </div>
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 w-full animate-slide-up" style={{ animationDelay: '0.4s', animationFillMode: 'both' }}>
           
